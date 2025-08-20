@@ -16,10 +16,10 @@
 
 ```bash
 # System-wide installation (recommended)
-curl -sSL https://raw.githubusercontent.com/your-org/secure-env-tools/main/install.sh | sudo bash
+curl -sSL https://raw.githubusercontent.com/progwise/secure-env-tools/main/install.sh | sudo bash
 
 # User installation (no sudo required)
-curl -sSL https://raw.githubusercontent.com/your-org/secure-env-tools/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/progwise/secure-env-tools/main/install.sh | bash
 ```
 
 ### Basic Usage
@@ -250,9 +250,9 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/your-org/secure-env-tools/issues)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/progwise/secure-env-tools/issues)
 - 📚 **Documentation**: This README
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/your-org/secure-env-tools/discussions)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/progwise/secure-env-tools/discussions)
 
 ---
 
