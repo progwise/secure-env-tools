@@ -176,7 +176,7 @@ for file in "${files_to_encrypt[@]}"; do
         if openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -in "$file" -out "${file}.enc" -pass pass:"$password" 2>/dev/null; then
             # Encryption successful
             echo -e "${GREEN}✓ Encrypted: $file -> ${file}.enc${NC}"
-            ((encrypted_count++))
+            encrypted_count=$((encrypted_count + 1))
         else
             echo -e "${RED}✗ Failed to encrypt: $file${NC}"
             # Remove the failed .enc file if it was created

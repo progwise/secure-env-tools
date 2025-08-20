@@ -109,12 +109,12 @@ for enc_file in "${files_to_decrypt[@]}"; do
         # Decryption successful, move temp file to target
         mv "$temp_file" "$target_file"
         echo -e "${GREEN}✓ Decrypted: $enc_file -> $target_file${NC}"
-        ((decrypted_count++))
+        decrypted_count=$((decrypted_count + 1))
     else
         echo -e "${RED}✗ Failed to decrypt: $enc_file${NC}"
         echo -e "${RED}  Error: Wrong password or corrupted file${NC}"
         rm -f "$temp_file"  # Remove failed temp file
-        ((failed_count++))
+        failed_count=$((failed_count + 1))
     fi
 done
 
