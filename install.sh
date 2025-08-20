@@ -11,7 +11,7 @@
   YELLOW='\033[1;33m'
   NC='\033[0m' # No Color
 
-  REPO_URL="https://raw.githubusercontent.com/your-org/secure-env-tools/main"
+  REPO_URL="https://raw.githubusercontent.com/progwise/secure-env-tools/main"
   INSTALL_DIR="/usr/local/bin"
   SCRIPTS=("encrypt-secrets.sh" "decrypt-secrets.sh")
 
