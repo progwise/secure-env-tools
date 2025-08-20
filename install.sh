@@ -31,8 +31,7 @@
       if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
           echo -e "${YELLOW}Adding $HOME/.local/bin to PATH${NC}"
           echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-          echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc 2>/dev/null
-  || true
+          echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc 2>/dev/null || true
           export PATH="$HOME/.local/bin:$PATH"
       fi
   fi
