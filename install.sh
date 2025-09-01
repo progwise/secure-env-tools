@@ -13,7 +13,7 @@
 
   REPO_URL="https://raw.githubusercontent.com/progwise/secure-env-tools/main"
   INSTALL_DIR="/usr/local/bin"
-  SCRIPTS=("encrypt-secrets.sh" "decrypt-secrets.sh")
+  SCRIPTS=("encrypt-secrets.sh" "decrypt-secrets.sh" "config.sh")
 
   echo "🔧 Installing Secure Environment Tools..."
 
@@ -76,7 +76,8 @@
   # Verify installation
   echo -e "\n🔍 Verifying installation..."
 
-  for script in "${SCRIPTS[@]}"; do
+  # Check main scripts (not config.sh)
+  for script in "encrypt-secrets.sh" "decrypt-secrets.sh"; do
       script_name="${script%.sh}"  # Remove .sh extension for command
       if command -v "$script_name" &> /dev/null; then
           echo -e "${GREEN}✓ $script_name is available${NC}"
@@ -85,20 +86,27 @@
       fi
   done
 
+  # Verify config.sh exists
+  if [ -f "$INSTALL_DIR/config.sh" ]; then
+      echo -e "${GREEN}✓ config.sh installed${NC}"
+  else
+      echo -e "${RED}✗ config.sh not found${NC}"
+  fi
+
   # Success message
   echo -e "\n${GREEN}════════════════════════════════════════${NC}"
   echo -e "${GREEN}✅ Installation complete!${NC}"
   echo -e "${GREEN}════════════════════════════════════════${NC}"
 
   echo -e "\n${YELLOW}Available commands:${NC}"
-  echo "  encrypt-secrets <customer-name>  # Encrypt sensitive files"
-  echo "  decrypt-secrets <customer-name>  # Decrypt encrypted files"
+  echo "  encrypt-secrets <folder-path>  # Encrypt sensitive files"
+  echo "  decrypt-secrets <folder-path>  # Decrypt encrypted files"
 
   echo -e "\n${YELLOW}Example usage:${NC}"
-  echo "  cd your-customer-repo/customer-folder"
-  echo "  decrypt-secrets"
-  echo "  # Edit your files..."
-  echo "  encrypt-secrets customer-name"
+  echo "  encrypt-secrets .                # Encrypt files in current directory"
+  echo "  encrypt-secrets ./my-project     # Encrypt files in specific folder"
+  echo "  decrypt-secrets .                # Decrypt files in current directory"
+  echo "  decrypt-secrets ./my-project     # Decrypt files in specific folder"
 
   if [ "$EUID" -ne 0 ]; then
       echo -e "\n${YELLOW}Note: You may need to restart your shell or 

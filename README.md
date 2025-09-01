@@ -25,20 +25,23 @@ curl -sSL https://raw.githubusercontent.com/progwise/secure-env-tools/main/insta
 ### Basic Usage
 
 ```bash
-# Encrypt sensitive files for a customer
-encrypt-secrets customer-name
+# 1. Initialize patterns file for a project
+encrypt-secrets --init ./my-project
 
-# Decrypt files for a customer  
-decrypt-secrets customer-name
+# 2. Edit patterns file to customize which files to encrypt
+vim ./my-project/.sensitive-file-patterns
+
+# 3. Encrypt sensitive files
+encrypt-secrets ./my-project
+
+# 4. Decrypt files when needed
+decrypt-secrets ./my-project
+
+# Use current directory
+encrypt-secrets --init .
+encrypt-secrets .
+decrypt-secrets .
 ```
-
-## Supported File Types
-
-The tools automatically encrypt/decrypt these sensitive file patterns:
-
-- `credentials.*` (credentials.md, credentials.txt, etc.)
-- `*.env` (.env, prod.env, dev.env, etc.)
-- `*.pem` (SSL certificates, private keys, etc.)
 
 ## Prerequisites
 
@@ -215,9 +218,15 @@ Install it with:
   brew install openssl  # macOS
 ```
 
+**No patterns file:**
+```
+Error: No .sensitive-file-patterns file found
+Run 'encrypt-secrets --init ./folder' to create one
+```
+
 **No sensitive files found:**
 ```
-No sensitive files found in customer-folder/
+No sensitive files found in folder/
 ```
 
 ### Troubleshooting
@@ -227,11 +236,32 @@ No sensitive files found in customer-folder/
 3. **Verify file integrity**: Ensure `.enc` files aren't corrupted
 4. **Password accuracy**: Passwords are case-sensitive
 
+## Testing
+
+The repository includes a comprehensive test suite that verifies all functionality:
+
+```bash
+# Run all tests
+./run-tests.sh
+
+# Tests include:
+# ✓ Script availability
+# ✓ Encryption with subdirectories
+# ✓ Decryption functionality
+# ✓ Current directory usage (.)
+# ✓ Pattern file handling
+# ✓ Exclusion patterns (!pattern)
+# ✓ Password validation
+# ✓ Error handling
+# ✓ Empty directory handling
+# ✓ Idempotency (re-encryption)
+```
+
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature-name`
-3. Make changes and test thoroughly
+3. Make changes and test thoroughly: `./run-tests.sh`
 4. Commit: `git commit -m "Add feature"`
 5. Push: `git push origin feature-name`
 6. Create a Pull Request

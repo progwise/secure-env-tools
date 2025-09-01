@@ -1,46 +1,150 @@
 #!/bin/bash
 
 # Script to encrypt all sensitive files before committing to Git
-# Usage: ./encrypt-secrets.sh [customer-name]
-# Example: ./encrypt-secrets.sh cheplapharm
+# Usage: ./encrypt-secrets.sh [folder-name]
+#        ./encrypt-secrets.sh --init [folder-name]
+# Example: ./encrypt-secrets.sh .
+#          ./encrypt-secrets.sh --init ./my-project
 # Requires OpenSSL to be installed
 
 set -e
 
-# Define file patterns to encrypt (easily extendable)
-SENSITIVE_FILE_PATTERNS=(
-    "credentials.*"
-    "*.env"
-    "*.pem"
-)
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Source the shared configuration
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+    source "$SCRIPT_DIR/config.sh"
+else
+    echo "Error: config.sh not found in $SCRIPT_DIR"
+    exit 1
+fi
+
+# Function to create default .sensitive-file-patterns file
+create_patterns_file() {
+    local target_dir="$1"
+    local patterns_file="$target_dir/.sensitive-file-patterns"
+    
+    if [ -f "$patterns_file" ]; then
+        echo -e "${YELLOW}File already exists: $patterns_file${NC}"
+        echo -n "Overwrite? (y/N): "
+        read -r response
+        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+            echo "Keeping existing file."
+            return 0
+        fi
+    fi
+    
+    cat > "$patterns_file" << 'EOF'
+# Sensitive file patterns for encryption
+# One pattern per line, supports wildcards (*)
+# Lines starting with # are comments
+# Add patterns specific to your project
+
+# Credentials files
+credentials.*
+
+# Environment files
+*.env
+.env
+.env.*
+# Exclude example files (uncomment if needed)
+# !.env.example
+# !.env.sample
+
+# SSL/TLS certificates and keys
+*.pem
+*.key
+*.crt
+
+# SSH keys
+id_rsa
+id_ed25519
+id_ecdsa
+id_dsa
+
+# Database configs
+database.yml
+database.json
+db.conf
+
+# AWS credentials
+# credentials
+# config
+
+# API keys and tokens (be careful with wildcards)
+# *apikey*
+# *token*
+# *secret*
+EOF
+    
+    echo -e "${GREEN}✓ Created $patterns_file${NC}"
+    echo -e "${YELLOW}Edit this file to customize which files to encrypt${NC}"
+    return 0
+}
 
 # Parse arguments
-CUSTOMER="$1"
-if [ -z "$CUSTOMER" ]; then
-    echo -e "${YELLOW}Usage: $0 <customer-name>${NC}"
-    echo "Example: $0 cheplapharm"
-    echo -e "\n${YELLOW}Available customers:${NC}"
-    for dir in */; do
-        if [ -d "$dir" ] && [ "$dir" != ".git/" ]; then
-            echo "  - ${dir%/}"
+if [ "$1" = "--init" ]; then
+    FOLDER="${2:-.}"
+    if [ ! -d "$FOLDER" ]; then
+        echo -e "${RED}Error: directory '$FOLDER' not found${NC}"
+        exit 1
+    fi
+    create_patterns_file "$FOLDER"
+    exit 0
+fi
+
+FOLDER="$1"
+if [ -z "$FOLDER" ]; then
+    echo -e "${YELLOW}Usage: $0 [--init] <folder-path>${NC}"
+    echo "Examples:"
+    echo "  $0 .                    # Encrypt files in current directory"
+    echo "  $0 ./my-project         # Encrypt files in specific folder"
+    echo "  $0 --init .             # Create .sensitive-file-patterns in current directory"
+    echo "  $0 --init ./my-project  # Create .sensitive-file-patterns in specific folder"
+    exit 1
+fi
+
+# Check if directory exists
+if [ ! -d "$FOLDER" ]; then
+    echo -e "${RED}Error: directory '$FOLDER' not found${NC}"
+    exit 1
+fi
+
+# Check for .sensitive-file-patterns file
+PATTERNS_FILE="$FOLDER/.sensitive-file-patterns"
+if [ ! -f "$PATTERNS_FILE" ]; then
+    echo -e "${RED}Error: No .sensitive-file-patterns file found in $FOLDER${NC}"
+    echo -e "${YELLOW}Run '$0 --init $FOLDER' to create one${NC}"
+    exit 1
+fi
+
+# Load patterns from file
+SENSITIVE_FILE_PATTERNS=()
+EXCLUDE_PATTERNS=()
+while IFS= read -r line; do
+    # Skip empty lines and comments
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    # Trim whitespace
+    line=$(echo "$line" | xargs)
+    if [ -n "$line" ]; then
+        if [[ "$line" == !* ]]; then
+            # Exclusion pattern - remove the ! prefix
+            EXCLUDE_PATTERNS+=("${line:1}")
+        else
+            SENSITIVE_FILE_PATTERNS+=("$line")
         fi
-    done
-    exit 1
+    fi
+done < "$PATTERNS_FILE"
+
+if [ ${#SENSITIVE_FILE_PATTERNS[@]} -eq 0 ]; then
+    echo -e "${YELLOW}Warning: No patterns found in .sensitive-file-patterns${NC}"
+    echo -e "${YELLOW}Edit $PATTERNS_FILE to add file patterns${NC}"
+    exit 0
 fi
 
-# Check if customer directory exists
-if [ ! -d "$CUSTOMER" ]; then
-    echo -e "${RED}Error: Customer directory '$CUSTOMER' not found${NC}"
-    exit 1
-fi
-
-echo "🔐 Encrypting sensitive files for customer: $CUSTOMER"
+echo "🔐 Encrypting sensitive files in folder: $FOLDER"
+echo -e "${YELLOW}Using patterns from .sensitive-file-patterns${NC}"
 
 # Check if OpenSSL is installed
 if ! command -v openssl &> /dev/null; then
@@ -55,10 +159,10 @@ fi
 encrypted_count=0
 files_to_encrypt=()
 
-# Find all sensitive files in customer directory
-echo -e "\n${YELLOW}Looking for sensitive files in $CUSTOMER/...${NC}"
+# Find all sensitive files in directory
+echo -e "\n${YELLOW}Looking for sensitive files in $FOLDER/...${NC}"
 
-# Build find command with all patterns, excluding .cpt files
+# Build find command with all patterns, excluding .enc files
 find_conditions=()
 for i in "${!SENSITIVE_FILE_PATTERNS[@]}"; do
     if [ $i -eq 0 ]; then
@@ -69,14 +173,19 @@ for i in "${!SENSITIVE_FILE_PATTERNS[@]}"; do
 done
 find_conditions+=(")" "-not" "-name" "*.enc")
 
-# Find all matching files (excluding .enc files)
+# Add exclusion patterns
+for pattern in "${EXCLUDE_PATTERNS[@]}"; do
+    find_conditions+=("-not" "-name" "$pattern")
+done
+
+# Find all matching files (excluding .enc files and exclusion patterns)
 while IFS= read -r -d '' file; do
     files_to_encrypt+=("$file")
-done < <(find "$CUSTOMER" "${find_conditions[@]}" -type f -print0 2>/dev/null)
+done < <(find "$FOLDER" "${find_conditions[@]}" -type f -print0 2>/dev/null)
 
 # Check if any files found
 if [ ${#files_to_encrypt[@]} -eq 0 ]; then
-    echo -e "${YELLOW}No sensitive files found in $CUSTOMER/${NC}"
+    echo -e "${YELLOW}No sensitive files found in $FOLDER/${NC}"
     exit 0
 fi
 
@@ -92,48 +201,11 @@ done
 
 echo -e "\n${YELLOW}Total: ${#files_to_encrypt[@]} file(s) will be encrypted${NC}"
 
-# Function to validate password strength
-validate_password() {
-    local pass="$1"
-    local errors=""
-    
-    # Check minimum length
-    if [ ${#pass} -lt 12 ]; then
-        errors="${errors}\n  ✗ At least 12 characters required (current: ${#pass})"
-    fi
-    
-    # Check for lowercase letter
-    if ! [[ "$pass" =~ [a-z] ]]; then
-        errors="${errors}\n  ✗ At least one lowercase letter required"
-    fi
-    
-    # Check for uppercase letter
-    if ! [[ "$pass" =~ [A-Z] ]]; then
-        errors="${errors}\n  ✗ At least one uppercase letter required"
-    fi
-    
-    # Check for number
-    if ! [[ "$pass" =~ [0-9] ]]; then
-        errors="${errors}\n  ✗ At least one number required"
-    fi
-    
-    # Check for special character
-    if ! [[ "$pass" =~ [^a-zA-Z0-9] ]]; then
-        errors="${errors}\n  ✗ At least one special character required (!@#$%^&*()_+-=[]{}|;:,.<>?)"
-    fi
-    
-    if [ -n "$errors" ]; then
-        echo -e "${RED}Password does not meet security requirements:${NC}"
-        echo -e "$errors"
-        return 1
-    fi
-    
-    return 0
-}
+# Password validation function is in config.sh
 
 # Get encryption password once
 while true; do
-    echo -n "Enter encryption key for all files of \"$CUSTOMER\": "
+    echo -n "Enter encryption key for all files of \"$FOLDER\": "
     IFS= read -r -s password
     echo
     
@@ -173,7 +245,7 @@ echo -e "\n${GREEN}Encrypting ${#files_to_encrypt[@]} file(s)${NC}"
 for file in "${files_to_encrypt[@]}"; do
     if [ -f "$file" ]; then
         # Encrypt directly to .enc file using OpenSSL
-        if openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -salt -in "$file" -out "${file}.enc" -pass pass:"$password" 2>/dev/null; then
+        if openssl enc -${ENCRYPTION_ALGORITHM} -pbkdf2 -iter ${PBKDF2_ITERATIONS} -salt -in "$file" -out "${file}.enc" -pass pass:"$password" 2>/dev/null; then
             # Encryption successful
             echo -e "${GREEN}✓ Encrypted: $file -> ${file}.enc${NC}"
             encrypted_count=$((encrypted_count + 1))
@@ -187,7 +259,7 @@ done
 
 # Summary
 echo -e "\n${GREEN}════════════════════════════════════════${NC}"
-echo -e "${GREEN}✓ Encryption complete for $CUSTOMER!${NC}"
+echo -e "${GREEN}✓ Encryption complete for $FOLDER!${NC}"
 echo -e "${GREEN}  Total files encrypted: $encrypted_count${NC}"
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 
@@ -205,7 +277,7 @@ fi
 echo -e "\n${YELLOW}⚠️  Important reminders:${NC}"
 echo "  1. Keep your encryption password safe!"
 echo "  2. Never commit the unencrypted files"
-echo "  3. Add *.enc files to git: git add $CUSTOMER/*.enc"
+echo "  3. Add *.enc files to git: git add $FOLDER/*.enc"
 echo "  4. The unencrypted files are in .gitignore"
 
 exit 0

@@ -1,46 +1,43 @@
 #!/bin/bash
 
 # Script to decrypt all .enc files after cloning or pulling from Git
-# Usage: ./decrypt-secrets.sh [customer-name]
-# Example: ./decrypt-secrets.sh cheplapharm
+# Usage: ./decrypt-secrets.sh [folder-name]
+# Example: ./decrypt-secrets.sh .
 # Requires OpenSSL to be installed
 
 set -e
 
-# Define file patterns that can be encrypted (must match encrypt-secrets.sh)
-SENSITIVE_FILE_PATTERNS=(
-    "credentials.*"
-    "*.env"
-    "*.pem"
-)
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Source the shared configuration
+if [ -f "$SCRIPT_DIR/config.sh" ]; then
+    source "$SCRIPT_DIR/config.sh"
+else
+    echo "Error: config.sh not found in $SCRIPT_DIR"
+    exit 1
+fi
 
 # Parse arguments
-CUSTOMER="$1"
-if [ -z "$CUSTOMER" ]; then
-    echo -e "${YELLOW}Usage: $0 <customer-name>${NC}"
-    echo "Example: $0 cheplapharm"
-    echo -e "\n${YELLOW}Available customers:${NC}"
-    for dir in */; do
-        if [ -d "$dir" ] && [ "$dir" != ".git/" ] && [ "$(find "$dir" -name "*.cpt" -type f 2>/dev/null | head -n 1)" ]; then
-            echo "  - ${dir%/}"
-        fi
-    done
+FOLDER="$1"
+if [ -z "$FOLDER" ]; then
+    echo -e "${YELLOW}Usage: $0 <folder-path>${NC}"
+    echo "Examples:"
+    echo "  $0 .                    # Decrypt files in current directory"
+    echo "  $0 ./my-project         # Decrypt files in specific folder"
     exit 1
 fi
 
-# Check if customer directory exists
-if [ ! -d "$CUSTOMER" ]; then
-    echo -e "${RED}Error: Customer directory '$CUSTOMER' not found${NC}"
+# Check if directory exists
+if [ ! -d "$FOLDER" ]; then
+    echo -e "${RED}Error: directory '$FOLDER' not found${NC}"
     exit 1
 fi
 
-echo "🔓 Decrypting sensitive files for customer: $CUSTOMER"
+echo "🔓 Decrypting sensitive files in folder: $FOLDER"
+
+# Note: decrypt-secrets.sh doesn't need to read .sensitive-file-patterns
+# It simply decrypts all .enc files found in the directory
 
 # Check if OpenSSL is installed
 if ! command -v openssl &> /dev/null; then
@@ -51,15 +48,15 @@ if ! command -v openssl &> /dev/null; then
     exit 1
 fi
 
-# Find all .enc files in customer directory
+# Find all .enc files in folder
 files_to_decrypt=()
 while IFS= read -r -d '' file; do
     files_to_decrypt+=("$file")
-done < <(find "$CUSTOMER" -name "*.enc" -type f -print0 2>/dev/null)
+done < <(find "$FOLDER" -name "*.enc" -type f -print0 2>/dev/null)
 
 # Check if any files found
 if [ ${#files_to_decrypt[@]} -eq 0 ]; then
-    echo -e "${YELLOW}No encrypted (.enc) files found in $CUSTOMER/${NC}"
+    echo -e "${YELLOW}No encrypted (.enc) files found in $FOLDER/${NC}"
     exit 0
 fi
 
@@ -91,7 +88,7 @@ if [ ${#existing_files[@]} -gt 0 ]; then
 fi
 
 # Get decryption password once
-echo -n "Enter decryption key for all files of \"$CUSTOMER\": "
+echo -n "Enter decryption key for all files of \"$FOLDER\": "
 read -s password
 echo
 
@@ -105,7 +102,7 @@ for enc_file in "${files_to_decrypt[@]}"; do
     temp_file="${target_file}.tmp_decrypt"
     
     # Decrypt to temporary file first to avoid destroying existing files
-    if openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -in "$enc_file" -out "$temp_file" -pass pass:"$password" 2>/dev/null; then
+    if openssl enc -${ENCRYPTION_ALGORITHM} -pbkdf2 -iter ${PBKDF2_ITERATIONS} -d -in "$enc_file" -out "$temp_file" -pass pass:"$password" 2>/dev/null; then
         # Decryption successful, move temp file to target
         mv "$temp_file" "$target_file"
         echo -e "${GREEN}✓ Decrypted: $enc_file -> $target_file${NC}"
@@ -121,7 +118,7 @@ done
 # Summary
 echo -e "\n${GREEN}════════════════════════════════════════${NC}"
 if [ $failed_count -eq 0 ]; then
-    echo -e "${GREEN}✓ Decryption complete for $CUSTOMER!${NC}"
+    echo -e "${GREEN}✓ Decryption complete for $FOLDER!${NC}"
 else
     echo -e "${YELLOW}⚠️  Decryption finished with errors${NC}"
 fi
