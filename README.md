@@ -29,7 +29,7 @@ curl -sSL https://raw.githubusercontent.com/progwise/secure-env-tools/main/insta
 encrypt-secrets --init ./my-project
 
 # 2. Edit patterns file to customize which files to encrypt
-vim ./my-project/.sensitive-file-patterns
+vim ./my-project/.sensitive-patterns.txt
 
 # 3. Encrypt sensitive files
 encrypt-secrets ./my-project
@@ -220,7 +220,7 @@ Install it with:
 
 **No patterns file:**
 ```
-Error: No .sensitive-file-patterns file found
+Error: No .sensitive-patterns.txt file found
 Run 'encrypt-secrets --init ./folder' to create one
 ```
 

@@ -23,7 +23,7 @@ fi
 # Function to create default .sensitive-file-patterns file
 create_patterns_file() {
     local target_dir="$1"
-    local patterns_file="$target_dir/.sensitive-file-patterns"
+    local patterns_file="$target_dir/.sensitive-patterns.txt"
     
     if [ -f "$patterns_file" ]; then
         echo -e "${YELLOW}File already exists: $patterns_file${NC}"
@@ -100,8 +100,8 @@ if [ -z "$FOLDER" ]; then
     echo "Examples:"
     echo "  $0 .                    # Encrypt files in current directory"
     echo "  $0 ./my-project         # Encrypt files in specific folder"
-    echo "  $0 --init .             # Create .sensitive-file-patterns in current directory"
-    echo "  $0 --init ./my-project  # Create .sensitive-file-patterns in specific folder"
+    echo "  $0 --init .             # Create .sensitive-patterns.txt in current directory"
+    echo "  $0 --init ./my-project  # Create .sensitive-patterns.txt in specific folder"
     exit 1
 fi
 
@@ -111,10 +111,10 @@ if [ ! -d "$FOLDER" ]; then
     exit 1
 fi
 
-# Check for .sensitive-file-patterns file
-PATTERNS_FILE="$FOLDER/.sensitive-file-patterns"
+# Check for .sensitive-patterns.txt file
+PATTERNS_FILE="$FOLDER/.sensitive-patterns.txt"
 if [ ! -f "$PATTERNS_FILE" ]; then
-    echo -e "${RED}Error: No .sensitive-file-patterns file found in $FOLDER${NC}"
+    echo -e "${RED}Error: No .sensitive-patterns.txt file found in $FOLDER${NC}"
     echo -e "${YELLOW}Run '$0 --init $FOLDER' to create one${NC}"
     exit 1
 fi
@@ -138,13 +138,13 @@ while IFS= read -r line; do
 done < "$PATTERNS_FILE"
 
 if [ ${#SENSITIVE_FILE_PATTERNS[@]} -eq 0 ]; then
-    echo -e "${YELLOW}Warning: No patterns found in .sensitive-file-patterns${NC}"
+    echo -e "${YELLOW}Warning: No patterns found in .sensitive-patterns.txt${NC}"
     echo -e "${YELLOW}Edit $PATTERNS_FILE to add file patterns${NC}"
     exit 0
 fi
 
 echo "🔐 Encrypting sensitive files in folder: $FOLDER"
-echo -e "${YELLOW}Using patterns from .sensitive-file-patterns${NC}"
+echo -e "${YELLOW}Using patterns from .sensitive-patterns.txt${NC}"
 
 # Check if OpenSSL is installed
 if ! command -v openssl &> /dev/null; then

@@ -36,7 +36,7 @@ fi
 
 echo "🔓 Decrypting sensitive files in folder: $FOLDER"
 
-# Note: decrypt-secrets.sh doesn't need to read .sensitive-file-patterns
+# Note: decrypt-secrets.sh doesn't need to read .sensitive-patterns.txt
 # It simply decrypts all .enc files found in the directory
 
 # Check if OpenSSL is installed

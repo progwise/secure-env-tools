@@ -99,14 +99,15 @@
   echo -e "${GREEN}════════════════════════════════════════${NC}"
 
   echo -e "\n${YELLOW}Available commands:${NC}"
-  echo "  encrypt-secrets <folder-path>  # Encrypt sensitive files"
-  echo "  decrypt-secrets <folder-path>  # Decrypt encrypted files"
+  echo "  encrypt-secrets --init <folder>  # Create patterns file"
+  echo "  encrypt-secrets <folder>         # Encrypt sensitive files"
+  echo "  decrypt-secrets <folder>         # Decrypt encrypted files"
 
-  echo -e "\n${YELLOW}Example usage:${NC}"
-  echo "  encrypt-secrets .                # Encrypt files in current directory"
-  echo "  encrypt-secrets ./my-project     # Encrypt files in specific folder"
-  echo "  decrypt-secrets .                # Decrypt files in current directory"
-  echo "  decrypt-secrets ./my-project     # Decrypt files in specific folder"
+  echo -e "\n${YELLOW}Example workflow:${NC}"
+  echo "  encrypt-secrets --init .         # 1. Initialize patterns file"
+  echo "  vim .sensitive-patterns.txt      # 2. Edit patterns as needed"
+  echo "  encrypt-secrets .                # 3. Encrypt files"
+  echo "  decrypt-secrets .                # 4. Decrypt when needed"
 
   if [ "$EUID" -ne 0 ]; then
       echo -e "\n${YELLOW}Note: You may need to restart your shell or 
